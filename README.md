@@ -3,6 +3,8 @@ World Clock Comparison
 
 A graphical application to compare the current time in different cities around the world.
 
+![pyClock](pyC.png)
+
 Features
 --------
 
