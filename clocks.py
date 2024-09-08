@@ -152,8 +152,9 @@ class WorldClockComparison(QMainWindow):
         for i, (city, time, timezone_str, utc_time, is_dark) in enumerate(times):
             time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
             time_str = time.strftime(time_format)
-            utc_str = utc_time.strftime("%H:%M:%S UTC")
-            info_text = f"{city} ({timezone_str}):\n{time_str}\n{utc_str}"
+            # utc_str = utc_time.strftime("%H:%M:%S UTC")
+            info_text = f"{city} ({timezone_str}):\n{time_str}"
+            # \n{utc_str}"
             
             if i > 0:
                 prev_city, prev_time, _, _, _ = times[i-1]
