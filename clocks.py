@@ -190,6 +190,12 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
+        
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
+            self.remove_location()
+        else:
+            super().keyPressEvent(event)
 
     def update_times(self):
         if not self.locations:
