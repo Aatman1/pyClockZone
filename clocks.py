@@ -19,7 +19,7 @@ class CountryShapeWidget(QLabel):
         super().__init__(parent)
         self.setFixedSize(100, 100)
         self.country_code = ""
-        self.setStyleSheet("border-radius: 10px; background-color: white;")
+        self.setStyleSheet("border-radius: 10px; background-color: #2C2C2C;")
 
     def update_country(self, country_code):
         if country_code != self.country_code:
@@ -40,14 +40,14 @@ class CountryShapeWidget(QLabel):
             return
 
         # Plot the country shape
-        fig, ax = plt.subplots(figsize=(2, 2))
-        country.plot(ax=ax, color='lightblue', edgecolor='black')
+        fig, ax = plt.subplots(figsize=(2, 2), facecolor='#2C2C2C')
+        country.plot(ax=ax, color='#4A4A4A', edgecolor='#CCCCCC')
         ax.axis('off')
         plt.tight_layout()
 
         # Convert plot to QPixmap
         buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight', pad_inches=0.1)
+        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight', pad_inches=0.1, facecolor='#2C2C2C')
         buf.seek(0)
         pixmap = QPixmap()
         pixmap.loadFromData(buf.getvalue())
@@ -62,19 +62,17 @@ class ClockWidget(QGraphicsView):
         self.setScene(self.scene)
         self.setFixedSize(150, 150)
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
-        self.is_dark_mode = False
         self.location_abbr = ""
         self.country_code = ""
+        self.setStyleSheet("border-radius: 10px; background-color: #2C2C2C;")
 
-    def update_time(self, time, is_dark_mode, location_abbr, country_code):
+    def update_time(self, time, location_abbr, country_code):
         self.scene.clear()
-        self.is_dark_mode = is_dark_mode
         self.location_abbr = location_abbr
         self.country_code = country_code
         
-        # Set colors based on mode
-        bg_color = Qt.GlobalColor.black if is_dark_mode else Qt.GlobalColor.white
-        fg_color = Qt.GlobalColor.white if is_dark_mode else Qt.GlobalColor.black
+        bg_color = QColor("#2C2C2C")
+        fg_color = QColor("#FFFFFF")
         
         # Draw clock face
         self.scene.addEllipse(QRectF(0, 0, 140, 140), QPen(fg_color), QBrush(bg_color))
@@ -90,11 +88,11 @@ class ClockWidget(QGraphicsView):
         
         # Draw hands
         self.draw_hand(time.hour % 12 * 30 + time.minute / 2, 40, 3, fg_color)  # Hour hand
-        self.draw_hand(time.minute * 6, 55, 2, QColor(100, 100, 255))  # Minute hand
-        self.draw_hand(time.second * 6, 60, 1, Qt.GlobalColor.red)  # Second hand
+        self.draw_hand(time.minute * 6, 55, 2, QColor("#66B2FF"))  # Minute hand
+        self.draw_hand(time.second * 6, 60, 1, QColor("#FF6666"))  # Second hand
 
         # Add location abbreviation
-        abbr_text = self.scene.addText(self.location_abbr, QFont("Arial", 10))
+        abbr_text = self.scene.addText(self.location_abbr, QFont("Arial", 12, QFont.Weight.Bold))
         abbr_text.setDefaultTextColor(fg_color)
         abbr_text.setPos(70 - abbr_text.boundingRect().width() / 2, 40)
 
@@ -110,9 +108,8 @@ class ClockWidget(QGraphicsView):
 
     def get_flag_emoji(self, country_code):
         if country_code:
-            # Convert country code to regional indicator symbols
             return ''.join(chr(ord(c.upper()) + 127397) for c in country_code)
-        return ''  # White flag as fallback
+        return ''
 
 class LocationSection(QFrame):
     def __init__(self, parent=None):
@@ -121,16 +118,37 @@ class LocationSection(QFrame):
         self.clock = ClockWidget()
         self.country_shape = CountryShapeWidget()
         self.info_label = QLabel()
+        self.info_label.setFont(QFont("Arial", 10))
+        self.info_label.setStyleSheet("color: #FFFFFF;")
         self.layout.addWidget(self.clock)
         self.layout.addWidget(self.country_shape)
         self.layout.addWidget(self.info_label)
         self.setFrameShape(QFrame.Shape.Box)
+        self.setStyleSheet("QFrame { border-radius: 15px; background-color: #1E1E1E; }")
 
 class WorldClockComparison(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("World Clock Comparison")
-        self.setGeometry(100, 100, 1000, 600)  # Increased width to accommodate country shapes
+        self.setGeometry(100, 100, 1000, 600)
+        self.setStyleSheet("""
+            QMainWindow, QWidget { background-color: #121212; color: #FFFFFF; }
+            QLineEdit, QPushButton, QListWidget { 
+                font-size: 14px; 
+                padding: 5px; 
+                border-radius: 5px;
+                background-color: #2C2C2C;
+                color: #FFFFFF;
+                border: 1px solid #3A3A3A;
+            }
+            QPushButton { 
+                background-color: #0D47A1; 
+                font-weight: bold; 
+            }
+            QPushButton:hover { background-color: #1565C0; }
+            QListWidget::item { padding: 5px; }
+            QListWidget::item:selected { background-color: #1E1E1E; }
+        """)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -173,11 +191,42 @@ class WorldClockComparison(QMainWindow):
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
-            self.remove_location()
-        else:
-            super().keyPressEvent(event)
+    def update_times(self):
+        if not self.locations:
+            return
+
+        times = []
+        for (city, timezone_str, lat, lon, country_code), section in zip(self.locations, self.location_sections):
+            tz = pytz.timezone(timezone_str)
+            current_time = datetime.now(tz)
+            utc_time = current_time.astimezone(pytz.UTC)
+            
+            times.append((city, current_time, timezone_str, utc_time, country_code))
+            section.clock.update_time(current_time, city[:3].upper(), country_code)
+            section.country_shape.update_country(country_code)
+
+        times.sort(key=lambda x: x[1])
+        
+        for i, (city, time, timezone_str, utc_time, country_code) in enumerate(times):
+            time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
+            time_str = time.strftime(time_format)
+            info_text = f"{city} ({timezone_str}):\n{time_str}"
+            
+            if i > 0:
+                prev_city, prev_time, _, _, _ = times[i-1]
+                time_diff = time.replace(tzinfo=None) - prev_time.replace(tzinfo=None)
+                total_minutes = int(time_diff.total_seconds() / 60)
+                hours, minutes = divmod(abs(total_minutes), 60)
+                direction = "ahead of" if total_minutes > 0 else "behind"
+                diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
+                info_text += f"\nΔ {diff_str}"
+
+            self.location_sections[i].info_label.setText(info_text)
+
+    def toggle_time_format(self):
+        self.use_24_hour = not self.use_24_hour
+        self.format_toggle.setText("12 hr" if self.use_24_hour else "24 hr")
+        self.update_times()
 
     def add_location(self):
         city = self.location_input.text().strip().capitalize()
@@ -193,7 +242,6 @@ class WorldClockComparison(QMainWindow):
                         self.location_list.addItem(f"{city} ({timezone_str})")
                         self.location_input.clear()
                         
-                        # Add new location section
                         section = LocationSection()
                         self.clocks_layout.addWidget(section)
                         self.location_sections.append(section)
@@ -203,49 +251,6 @@ class WorldClockComparison(QMainWindow):
                     self.show_error(f"Could not find location: {city}")
             except Exception as e:
                 self.show_error(f"Error adding location: {str(e)}")
-
-    def update_times(self):
-        if not self.locations:
-            return
-
-        times = []
-        for (city, timezone_str, lat, lon, country_code), section in zip(self.locations, self.location_sections):
-            tz = pytz.timezone(timezone_str)
-            current_time = datetime.now(tz)
-            utc_time = current_time.astimezone(pytz.UTC)
-            
-            # Calculate if it's day or night using suntime
-            sun = Sun(lat, lon)
-            today_sr = sun.get_local_sunrise_time(current_time.date()).astimezone(pytz.UTC).time()
-            today_ss = sun.get_local_sunset_time(current_time.date()).astimezone(pytz.UTC).time()
-            is_dark = utc_time.time() > today_ss or utc_time.time() < today_sr
-
-            times.append((city, current_time, timezone_str, utc_time, is_dark, country_code))
-            section.clock.update_time(current_time, is_dark, city[:3].upper(), country_code)
-            section.country_shape.update_country(country_code)
-
-        times.sort(key=lambda x: x[1])
-        
-        for i, (city, time, timezone_str, utc_time, is_dark, country_code) in enumerate(times):
-            time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
-            time_str = time.strftime(time_format)
-            info_text = f"{city} ({timezone_str}):\n{time_str}"
-            
-            if i > 0:
-                prev_city, prev_time, _, _, _, _ = times[i-1]
-                time_diff = time.replace(tzinfo=None) - prev_time.replace(tzinfo=None)
-                total_minutes = int(time_diff.total_seconds() / 60)
-                hours, minutes = divmod(abs(total_minutes), 60)
-                direction = "ahead of" if total_minutes > 0 else "behind"
-                diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
-                info_text += f"\nΔ {diff_str}"
-
-            self.location_sections[i].info_label.setText(info_text)
-
-    def toggle_time_format(self):
-        self.use_24_hour = not self.use_24_hour
-        self.format_toggle.setText("12 hr" if self.use_24_hour else "24 hr")
-        self.update_times()
 
     def remove_location(self):
         current_row = self.location_list.currentRow()
@@ -269,7 +274,7 @@ class WorldClockComparison(QMainWindow):
 
     def show_error(self, message):
         error_label = QLabel(message)
-        error_label.setStyleSheet("color: red")
+        error_label.setStyleSheet("color: #FF6666; font-size: 14px; font-weight: bold;")
         self.layout.addWidget(error_label)
         QTimer.singleShot(3000, error_label.deleteLater)
 
