@@ -3,3 +3,6 @@ pytz
 geopy
 timezonefinder
 suntime
+pycountry
+geopandas
+matplotlib
