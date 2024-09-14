@@ -3,7 +3,6 @@ print(f"Python executable: {sys.executable}")
 print(f"Python version: {sys.version}")
 print(f"Python path: {sys.path}")
 import io
-import zipfile
 import requests
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
                                 QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame)
@@ -42,8 +41,8 @@ class CountryShapeWidget(QLabel):
             print(f"regular name: {country_name}")
 
             # Try to download the image using the regular country name
-            url = f"https://www.mydraw.com/NIMG.axd?i=Shape-Libraries/Maps/Country-Shapes/{country_name}.png"
-            flag_url = f"https://www.mydraw.com/NIMG.axd?i=Shape-Libraries/Maps/Country-Flags/{country_name}-Flag.png"
+            url = f"https://teuteuf-dashboard-assets.pages.dev/data/common/country-shapes/{country_code}.svg"
+            flag_url = f"https://flagicons.lipis.dev/flags/4x3/{country_code}.svg"
             try:
                 response = requests.get(url)
                 flag_response = requests.get(flag_url)
@@ -57,6 +56,9 @@ class CountryShapeWidget(QLabel):
                     flag_pixmap.loadFromData(flag_img_data)
                     self.setPixmap(pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
                     self.flag_pixmap = flag_pixmap.scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    
+                    pixmap.loadFromData(flag_img_data)
+                    self.parent().flag_label.setPixmap(self.flag_pixmap)  # Set the flag pixmap to the flag_label
                     self.update()
                 else:
                     print(f"Failed to download image for {country_code}. Status code: {response.status_code}")
@@ -81,7 +83,7 @@ class CountryShapeWidget(QLabel):
         fig, ax = plt.subplots(figsize=(2, 2))
         
         # Plot the country shape
-        country.plot(ax=ax, color='white', edgecolor='black')
+        country.plot(ax=ax, color='white', edgecolor='#8553ad')  # Change edgecolor to #8553ad
         
         # Remove axis and set tight layout
         ax.axis('off')
@@ -150,21 +152,24 @@ class ClockWidget(QGraphicsView):
         if country_code:
             return ''.join(chr(ord(c.upper()) + 127397) for c in country_code)
         return ''
-
 class LocationSection(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.layout = QHBoxLayout(self)
+        self.layout = QHBoxLayout(self)  # Change to QHBoxLayout
         self.clock = ClockWidget()
         self.country_shape = CountryShapeWidget()
+        self.flag_label = QLabel()  # Add a QLabel to display the flag
         self.info_label = QLabel()
         self.info_label.setFont(QFont("Arial", 10))
         self.info_label.setStyleSheet("color: #FFFFFF;")
         self.layout.addWidget(self.clock)
         self.layout.addWidget(self.country_shape)
+        self.layout.addWidget(self.flag_label)
         self.layout.addWidget(self.info_label)
         self.setFrameShape(QFrame.Shape.Box)
         self.setStyleSheet("QFrame { border-radius: 15px; background-color: #1E1E1E; }")
+        self.layout.setContentsMargins(10, 10, 10, 10)  # Add margins to the layout
+        self.layout.setSpacing(10)  # Add spacing between widgets
 
 class WorldClockComparison(QMainWindow):
     def __init__(self):
