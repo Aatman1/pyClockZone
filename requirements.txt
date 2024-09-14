@@ -1,5 +1,8 @@
 PyQt6
+requests
 pytz
 geopy
 timezonefinder
-suntime
+pycountry
+geopandas
+matplotlib
