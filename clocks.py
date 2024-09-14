@@ -1,20 +1,32 @@
 import sys
+print(f"Python executable: {sys.executable}")
+print(f"Python version: {sys.version}")
+print(f"Python path: {sys.path}")
 import io
+import zipfile
+import requests
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
-                             QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame)
+                                QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame)
 from PyQt6.QtCore import QTimer, Qt, QRectF, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap
+from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap, QImage
 from datetime import datetime
 import math
 import pytz
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
-from suntime import Sun
 import pycountry
 import geopandas as gpd
 import matplotlib.pyplot as plt
 
+try:
+    import requests
+except ImportError as e:
+    print(f"Error importing requests: {e}")
+    sys.exit(1)
+
 class CountryShapeWidget(QLabel):
+    world = None  # Define world attribute as a class variable
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setFixedSize(100, 100)
@@ -24,36 +36,69 @@ class CountryShapeWidget(QLabel):
     def update_country(self, country_code):
         if country_code != self.country_code:
             self.country_code = country_code
-            self.update_shape()
+            country = pycountry.countries.get(alpha_2=country_code)
+            country_name = country.name.replace(' ', '-').replace(',', '')
+            
+            print(f"regular name: {country_name}")
 
+            # Try to download the image using the regular country name
+            url = f"https://www.mydraw.com/NIMG.axd?i=Shape-Libraries/Maps/Country-Shapes/{country_name}.png"
+            flag_url = f"https://www.mydraw.com/NIMG.axd?i=Shape-Libraries/Maps/Country-Flags/{country_name}-Flag.png"
+            try:
+                response = requests.get(url)
+                flag_response = requests.get(flag_url)
+                if response.status_code == 200 and flag_response.status_code == 200:
+                    # If the regular country name works, use it
+                    img_data = response.content
+                    flag_img_data = flag_response.content
+                    pixmap = QPixmap()
+                    pixmap.loadFromData(img_data)
+                    flag_pixmap = QPixmap()
+                    flag_pixmap.loadFromData(flag_img_data)
+                    self.setPixmap(pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+                    self.flag_pixmap = flag_pixmap.scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    self.update()
+                else:
+                    print(f"Failed to download image for {country_code}. Status code: {response.status_code}")
+                    self.clear()
+            except Exception as e:
+                print(f"Error updating shape for {country_code}: {e}")
+                self.clear()
+                
     def update_shape(self):
-        if not self.country_code:
+        if not self.country_code or self.world is None:
             self.clear()
             return
 
-        # Get country shape data
-        world = gpd.read_file(gpd.datasets.get_path('naturalearth_lowres'))
-        country = world[world['iso_a2'] == self.country_code]
-
+        # Get the country shape
+        country = self.world[self.world['ISO_A2'] == self.country_code]
+        
         if country.empty:
             self.clear()
             return
 
+        # Create a figure and axis
+        fig, ax = plt.subplots(figsize=(2, 2))
+        
         # Plot the country shape
-        fig, ax = plt.subplots(figsize=(2, 2), facecolor='#2C2C2C')
-        country.plot(ax=ax, color='#4A4A4A', edgecolor='#CCCCCC')
+        country.plot(ax=ax, color='white', edgecolor='black')
+        
+        # Remove axis and set tight layout
         ax.axis('off')
         plt.tight_layout()
-
-        # Convert plot to QPixmap
-        buf = io.BytesIO()
-        fig.savefig(buf, format='png', dpi=100, bbox_inches='tight', pad_inches=0.1, facecolor='#2C2C2C')
-        buf.seek(0)
-        pixmap = QPixmap()
-        pixmap.loadFromData(buf.getvalue())
         
-        self.setPixmap(pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
+        # Save the figure to a bytes buffer
+        buf = io.BytesIO()
+        plt.savefig(buf, format='png', dpi=100, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig)
+        
+        # Create QPixmap from the buffer
+        buf.seek(0)
+        img = QImage.fromData(buf.getvalue())
+        pixmap = QPixmap.fromImage(img)
+        
+        # Set the pixmap to the label
+        self.setPixmap(pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
 
 class ClockWidget(QGraphicsView):
     def __init__(self, parent=None):
@@ -91,15 +136,10 @@ class ClockWidget(QGraphicsView):
         self.draw_hand(time.minute * 6, 55, 2, QColor("#66B2FF"))  # Minute hand
         self.draw_hand(time.second * 6, 60, 1, QColor("#FF6666"))  # Second hand
 
-        # Add location abbreviation
-        abbr_text = self.scene.addText(self.location_abbr, QFont("Arial", 12, QFont.Weight.Bold))
+        # Add location abbreviation and flag
+        abbr_text = self.scene.addText(f"{self.location_abbr} {self.get_flag_emoji(self.country_code)}", QFont("Arial", 12, QFont.Weight.Bold))
         abbr_text.setDefaultTextColor(fg_color)
         abbr_text.setPos(70 - abbr_text.boundingRect().width() / 2, 40)
-
-        # Add country flag (emoji)
-        flag_emoji = self.get_flag_emoji(self.country_code)
-        flag_text = self.scene.addText(flag_emoji, QFont("Arial", 12))
-        flag_text.setPos(70 - flag_text.boundingRect().width() / 2, 100)
 
     def draw_hand(self, angle, length, width, color):
         x = 70 + length * math.sin(math.radians(angle))
@@ -242,8 +282,8 @@ class WorldClockComparison(QMainWindow):
                 if location:
                     timezone_str = self.tf.timezone_at(lng=location.longitude, lat=location.latitude)
                     if timezone_str:
-                        country = pycountry.countries.get(alpha_2=location.raw['display_name'].split(', ')[-1])
-                        country_code = country.alpha_2 if country else ''
+                        country = self.geolocator.reverse((location.latitude, location.longitude)).raw['address']['country_code']
+                        country_code = country if country else ''
                         self.locations.append((city, timezone_str, location.latitude, location.longitude, country_code))
                         self.location_list.addItem(f"{city} ({timezone_str})")
                         self.location_input.clear()
