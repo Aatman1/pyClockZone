@@ -7,7 +7,7 @@ import requests
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
                                 QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame)
 from PyQt6.QtCore import QTimer, Qt, QRectF, QPointF
-from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap, QImage
+from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap, QImage, QIcon
 from datetime import datetime
 import math
 import pytz
@@ -55,7 +55,7 @@ class CountryShapeWidget(QLabel):
                     flag_pixmap = QPixmap()
                     flag_pixmap.loadFromData(flag_img_data)
                     self.setPixmap(pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-                    self.flag_pixmap = flag_pixmap.scaled(20, 20, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                    self.flag_pixmap = flag_pixmap.scaled(50, 50, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                     
                     pixmap.loadFromData(flag_img_data)
                     self.parent().flag_label.setPixmap(self.flag_pixmap)  # Set the flag pixmap to the flag_label
@@ -139,7 +139,7 @@ class ClockWidget(QGraphicsView):
         self.draw_hand(time.second * 6, 60, 1, QColor("#FF6666"))  # Second hand
 
         # Add location abbreviation and flag
-        abbr_text = self.scene.addText(f"{self.location_abbr} {self.get_flag_emoji(self.country_code)}", QFont("Arial", 12, QFont.Weight.Bold))
+        abbr_text = self.scene.addText(f"{self.location_abbr} {self.get_flag_emoji(self.country_code)}", QFont("Arial", 18, QFont.Weight.Bold))  # Increase font size to 18
         abbr_text.setDefaultTextColor(fg_color)
         abbr_text.setPos(70 - abbr_text.boundingRect().width() / 2, 40)
 
@@ -159,8 +159,9 @@ class LocationSection(QFrame):
         self.clock = ClockWidget()
         self.country_shape = CountryShapeWidget()
         self.flag_label = QLabel()  # Add a QLabel to display the flag
+        self.flag_label.setFixedSize(50, 50)  # Set fixed size to 50x50
         self.info_label = QLabel()
-        self.info_label.setFont(QFont("Arial", 10))
+        self.info_label.setFont(QFont("Arial", 14))  # Increase font size to 14
         self.info_label.setStyleSheet("color: #FFFFFF;")
         self.layout.addWidget(self.clock)
         self.layout.addWidget(self.country_shape)
@@ -176,6 +177,8 @@ class WorldClockComparison(QMainWindow):
         super().__init__()
         self.setWindowTitle("World Clock Comparison")
         self.setGeometry(100, 100, 1000, 600)
+        icon = QIcon("Wclock.png")
+        self.setWindowIcon(icon)
         self.setStyleSheet("""
             QMainWindow, QWidget { background-color: #121212; color: #FFFFFF; }
             QLineEdit, QPushButton, QListWidget { 
@@ -215,14 +218,14 @@ class WorldClockComparison(QMainWindow):
         input_layout.addWidget(self.format_toggle)
         self.layout.addLayout(input_layout)
 
-        self.location_list = QListWidget()
-        self.location_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-        self.location_list.itemChanged.connect(self.update_location_order)
-        self.layout.addWidget(self.location_list)
+        # self.location_list = QListWidget()
+        # self.location_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
+        # self.location_list.itemChanged.connect(self.update_location_order)
+        # self.layout.addWidget(self.location_list)
 
-        self.remove_button = QPushButton("Remove Selected Location")
-        self.remove_button.clicked.connect(self.remove_location)
-        self.layout.addWidget(self.remove_button)
+        # self.remove_button = QPushButton("Remove Selected Location")
+        # self.remove_button.clicked.connect(self.remove_location)
+        # self.layout.addWidget(self.remove_button)
 
         self.clocks_layout = QVBoxLayout()
         self.layout.addLayout(self.clocks_layout)
@@ -243,26 +246,27 @@ class WorldClockComparison(QMainWindow):
             super().keyPressEvent(event)
 
     def update_times(self):
-        if not self.locations:
+        if not self.location_sections:
             return
 
         times = []
-        for (city, timezone_str, lat, lon, country_code), section in zip(self.locations, self.location_sections):
+        for section in self.location_sections:
+            city, timezone_str, lat, lon, country_code = section.location_info
             tz = pytz.timezone(timezone_str)
             current_time = datetime.now(tz)
             utc_time = current_time.astimezone(pytz.UTC)
-            
+
             times.append((city, current_time, timezone_str, utc_time, country_code))
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
         times.sort(key=lambda x: x[1])
-        
+
         for i, (city, time, timezone_str, utc_time, country_code) in enumerate(times):
             time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
             time_str = time.strftime(time_format)
-            info_text = f"{city} ({timezone_str}):\n{time_str}"
-            
+            info_text = f"{city} ({timezone_str})\n{time_str}"
+
             if i > 0:
                 prev_city, prev_time, _, _, _ = times[i-1]
                 time_diff = time.replace(tzinfo=None) - prev_time.replace(tzinfo=None)
@@ -272,7 +276,7 @@ class WorldClockComparison(QMainWindow):
                 diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
                 info_text += f"\nΔ {diff_str}"
 
-            self.location_sections[i].info_label.setText(info_text)
+            section.info_label.setText(info_text)
 
     def toggle_time_format(self):
         self.use_24_hour = not self.use_24_hour
@@ -281,7 +285,7 @@ class WorldClockComparison(QMainWindow):
 
     def add_location(self):
         city = self.location_input.text().strip().capitalize()
-        if city and city not in [loc[0] for loc in self.locations]:
+        if city:
             try:
                 location = self.geolocator.geocode(city)
                 if location:
@@ -289,13 +293,11 @@ class WorldClockComparison(QMainWindow):
                     if timezone_str:
                         country = self.geolocator.reverse((location.latitude, location.longitude)).raw['address']['country_code']
                         country_code = country if country else ''
-                        self.locations.append((city, timezone_str, location.latitude, location.longitude, country_code))
-                        self.location_list.addItem(f"{city} ({timezone_str})")
-                        self.location_input.clear()
-                        
                         section = LocationSection()
-                        self.clocks_layout.addWidget(section)
+                        section.location_info = (city, timezone_str, location.latitude, location.longitude, country_code)
                         self.location_sections.append(section)
+                        self.clocks_layout.addWidget(section)
+                        self.location_input.clear()
                     else:
                         self.show_error(f"Could not determine timezone for {city}")
                 else:
@@ -303,25 +305,34 @@ class WorldClockComparison(QMainWindow):
             except Exception as e:
                 self.show_error(f"Error adding location: {str(e)}")
 
-    def remove_location(self):
-        current_row = self.location_list.currentRow()
-        if current_row >= 0:
-            self.location_list.takeItem(current_row)
-            del self.locations[current_row]
-            section = self.location_sections.pop(current_row)
-            self.clocks_layout.removeWidget(section)
-            section.deleteLater()
-            self.update_times()
+    def remove_location(self, section):
+        self.location_sections.remove(section)
+        self.clocks_layout.removeWidget(section)
+        section.deleteLater()
+        self.update_times()
 
     def update_location_order(self):
-        new_order = [self.location_list.item(i).text().split(' (')[0] for i in range(self.location_list.count())]
-        self.locations = [loc for loc in self.locations if loc[0] in new_order]
-        self.locations.sort(key=lambda x: new_order.index(x[0]))
-        self.location_sections = [section for _, section in sorted(zip(new_order, self.location_sections), key=lambda x: new_order.index(x[0]))]
         for i, section in enumerate(self.location_sections):
             self.clocks_layout.removeWidget(section)
             self.clocks_layout.insertWidget(i, section)
         self.update_times()
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.RightButton:
+            for section in self.location_sections:
+                if section.underMouse():
+                    self.remove_location(section)
+                    break
+        super().mousePressEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Delete:
+            for section in self.location_sections:
+                if section.hasFocus():
+                    self.remove_location(section)
+                    break
+        else:
+            super().keyPressEvent(event)
 
     def show_error(self, message):
         error_label = QLabel(message)
