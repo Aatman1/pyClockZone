@@ -59,15 +59,5 @@ A graphical application to compare the current time in different cities around t
 - Weather forecast data is fetched from the OpenWeatherMap API.
 - Country shapes are displayed using geopandas and matplotlib.
 - The application has a dark mode interface for better visibility.
+- The api for fetching forcasts doen Not support all locations
 
-## Troubleshooting
-
-If you encounter any issues with adding locations or fetching weather data, please check your internet connection and ensure that you have the necessary API keys (if required for the OpenWeatherMap API).
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is open source and available under the [MIT License](LICENSE).
