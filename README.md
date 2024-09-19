@@ -34,7 +34,7 @@ A graphical application to compare the current time in different cities around t
 
 1. Clone the repository:
    ```
-   git clone https://github.com/Aatman1/world-clock-comparison.git
+   git clone https://github.com/Aatman1/pyClockZone.git
    ```
 2. Install the required packages:
    ```
