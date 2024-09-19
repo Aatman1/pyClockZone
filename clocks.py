@@ -28,7 +28,7 @@ class ForecastWindow(QWidget):
 
     def initUI(self, lat, lon):
         self.setWindowTitle("Loading forecast...")  # Set the initial window title
-        self.resize(400, 300)  # Set the window size
+        self.resize(600, 500)  # Set the window size
 
         layout = QVBoxLayout()
         self.setLayout(layout)  # Set the layout
