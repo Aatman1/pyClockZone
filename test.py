@@ -1,6 +1,7 @@
 import sys
-import io
 import requests
+import io
+import matplotlib.pyplot as plt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
                                 QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame, 
                                 QTextBrowser)
@@ -20,15 +21,13 @@ try:
 except ImportError as e:
     print(f"Error importing requests: {e}")
     sys.exit(1)
-
-
 class ForecastWindow(QWidget):
     def __init__(self, lat, lon):
         super().__init__()
         self.initUI(lat, lon)
 
     def initUI(self, lat, lon):
-        self.setWindowTitle("Forecast")
+        self.setWindowTitle("Loading forecast...")  # Set the initial window title
         self.resize(400, 300)  # Set the window size
 
         layout = QVBoxLayout()
@@ -41,10 +40,10 @@ class ForecastWindow(QWidget):
         layout.addWidget(self.forecast_text)  # Add the text browser to the layout
 
         self.get_forecast(lat, lon)
-        
+
     def get_forecast(self, lat, lon):
-        api_key = "8EiTRxaQZSeLZhLH7azGk2l4fYTdmEkb"  # Replace with your actual Tomorrow.io API key
-        url = f"https://api.tomorrow.io/v4/timelines?location={lat},{lon}&fields=temperature,precipitation,windSpeed&units=metric&apikey={api_key}&timesteps=1h&timezone=auto"
+        api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
+        url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an exception for bad status codes
@@ -66,23 +65,69 @@ class ForecastWindow(QWidget):
 
         try:
             data = response.json()
-            if "data" in data and "timelines" in data["data"] and len(data["data"]["timelines"]) > 0 and "intervals" in data["data"]["timelines"][0]:
-                forecast_text = ""
-                for day in data["data"]["timelines"][0]["intervals"]:
-                    forecast_text += f"{day['startTime']}: {day['values']['temperature']}°C, {day['values']['precipitation']}mm, {day['values']['windSpeed']}m/s\n"
-                self.forecast_text.setText(forecast_text)
+            if "list" in data:
+                # Get the country name from the geopy library
+                geolocator = Nominatim(user_agent="world_clock_comparison")
+                location = geolocator.reverse((lat, lon))
+                city_name = location.raw['address']['city']
+                country_code = location.raw['address']['country_code']
+                english_country_name = pycountry.countries.get(alpha_2=country_code).name
+
+                # Get the current time of the location
+                tf = TimezoneFinder()
+                timezone_str = tf.timezone_at(lng=lon, lat=lat)
+                tz = pytz.timezone(timezone_str)
+                current_time = datetime.now(tz)
+
+                # Create a table to display the forecast data
+                table = "<table style='font-size: 16px; line-height: 1.5'>"
+                table += "<tr><th style='padding: 10px'>Time</th><th style='padding: 10px'>Temperature °C (°F)</th><th style='padding: 10px'>Weather</th></tr>"
+                for hour in data["list"]:
+                    forecast_time = datetime.fromtimestamp(hour["dt"], tz)
+                    if forecast_time > current_time:
+                        temp_celsius = round(hour["main"]["temp"])
+                        temp_fahrenheit = round((temp_celsius * 9/5) + 32)
+                        weather_icon = self.get_weather_icon(hour["weather"][0]["icon"])
+                        table += f"<tr><td style='padding: 10px'>{forecast_time.strftime('%H:%M')}</td><td style='padding: 10px'>{temp_celsius}°C ({temp_fahrenheit}°F)</td><td style='padding: 10px'>{weather_icon} {hour['weather'][0]['description']}</td></tr>"
+                table += "</table>"
+
+                self.forecast_text.setText(table)
                 self.forecast_label.setText("Forecast:")
+
+                # Set the window title to the city and country name
+                self.setWindowTitle(f"{city_name}, {english_country_name} - Weather Forecast")
+                print(f"{city_name}, {english_country_name}")
             else:
                 self.forecast_label.setText("Error loading forecast")
                 self.forecast_text.setText("Invalid API response")
         except Exception as e:
             self.forecast_label.setText("Error loading forecast")
             self.forecast_text.setText("Error parsing API response: " + str(e))
-            
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     window = ForecastWindow(37.7749, -122.4194)  # Example coordinates
-#     window.show()
+
+    def get_weather_icon(self, icon_code):
+        # Map the icon code to a weather icon
+        icon_map = {
+            "01d": "☀️",  # Sunny
+            "01n": "🌃",  # Clear night
+            "02d": "🌞",  # Partly cloudy
+            "02n": "🌃",  # Partly cloudy night
+            "03d": "☁️",  # Cloudy
+            "03n": "☁️",  # Cloudy night
+            "04d": "🌫️",  # Overcast
+            "04n": "🌫️",  # Overcast night
+            "09d": "☔️",  # Light rain
+            "09n": "☔️",  # Light rain night
+            "10d": "☁️",  # Rain
+            "10n": "☁️",  # Rain night
+            "11d": "⛈️",  # Thunderstorm
+            "11n": "⛈️",  # Thunderstorm night
+            "13d": "❄️",  # Snow
+            "13n": "❄️",  # Snow night
+            "50d": "🌫️",  # Fog
+            "50n": "🌫️",  # Fog night
+        }
+        return icon_map.get(icon_code, "❓")  # Return a default icon if the code is not found
+
 class CountryShapeWidget(QLabel):
     world = None  # Define world attribute as a class variable
 
@@ -97,7 +142,7 @@ class CountryShapeWidget(QLabel):
             self.country_code = country_code
             country = pycountry.countries.get(alpha_2=country_code)
             country_name = country.name.replace(' ', '-').replace(',', '')
-            
+
             print(f"regular name: {country_name}")
 
             # Try to download the image using the regular country name
@@ -212,6 +257,7 @@ class ClockWidget(QGraphicsView):
         if country_code:
             return ''.join(chr(ord(c.upper()) + 127397) for c in country_code)
         return ''
+
 class LocationSection(QFrame):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -239,7 +285,7 @@ class WorldClockComparison(QMainWindow):
         self.setGeometry(100, 100, 1000, 600)
         icon = QIcon("Wclock.png")
         self.setWindowIcon(icon)
-        self.setStyleSheet("""
+        self.setStyleSheet(""" 
             QMainWindow, QWidget { background-color: #121212; color: #FFFFFF; }
             QLineEdit, QPushButton, QListWidget { 
                 font-size: 14px; 
@@ -278,15 +324,6 @@ class WorldClockComparison(QMainWindow):
         input_layout.addWidget(self.format_toggle)
         self.layout.addLayout(input_layout)
 
-        # self.location_list = QListWidget()
-        # self.location_list.setDragDropMode(QListWidget.DragDropMode.InternalMove)
-        # self.location_list.itemChanged.connect(self.update_location_order)
-        # self.layout.addWidget(self.location_list)
-
-        # self.remove_button = QPushButton("Remove Selected Location")
-        # self.remove_button.clicked.connect(self.remove_location)
-        # self.layout.addWidget(self.remove_button)
-
         self.clocks_layout = QVBoxLayout()
         self.layout.addLayout(self.clocks_layout)
 
@@ -298,7 +335,7 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
-        
+
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
             self.remove_location()
@@ -381,8 +418,10 @@ class WorldClockComparison(QMainWindow):
         if event.button() == Qt.MouseButton.LeftButton:
             for section in self.location_sections:
                 if section.underMouse():
-                    lat, lon, _ = section.location_info[2:]  # Get lat and lon from section
-                    self.forecast_window = ForecastWindow(lat, lon)  # Store the ForecastWindow instance
+                    city, _, lat, lon, country_code = section.location_info  # Get city and country code from section
+                    country = pycountry.countries.get(alpha_2=country_code).name  # Get country name from country code
+                    self.forecast_window = ForecastWindow(lat, lon)
+                    self.forecast_window.setWindowTitle(f"{city}, {country}")  # Set window title with city and country
                     self.forecast_window.show()
                     break
         if event.button() == Qt.MouseButton.RightButton:
