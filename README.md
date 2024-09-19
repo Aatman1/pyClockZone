@@ -1,48 +1,73 @@
-World Clock Comparison
-==========================
+# World Clock Comparison
 
-A graphical application to compare the current time in different cities around the world.
+A graphical application to compare the current time in different cities around the world, built with Python and PyQt6.
 
-![pyClock](pyC.png)
+![World Clock Comparison](pyC.png)
 
-Features
---------
+## Features
 
-* Add and remove cities from the list
-* Automatically detect the timezone of each city
-* Display the current time in each city, including the timezone offset from UTC
-* Show the time difference between each city
-* Toggle between 12-hour and 24-hour time formats
-* Drag-and-drop to reorder the city list
+- Add and remove cities from the list
+- Automatically detect the timezone of each city
+- Display the current time in each city, including the timezone offset
+- Show the time difference between cities
+- Toggle between 12-hour and 24-hour time formats
+- Graphical clock face for each city
+- Country shape display for each location
+- Flag emoji for each country
+- Weather forecast for each location (on left-click)
+- Remove loction from the list (on left-click)
 
-Requirements
-------------
 
-* Python 3.x
-* PyQt6
-* pytz
-* geopy
-* timezonefinder
-* suntime
+## Requirements
 
-Installation
-------------
+- Python 3.x
+- PyQt6
+- pytz
+- geopy
+- timezonefinder
+- requests
+- matplotlib
+- pycountry
+- geopandas
 
-1. Clone the repository: `git clone https://github.com/your-username/world-clock-comparison.git`
-2. Install the required packages: `pip install -r requirements.txt`
-3. Run the application: `python main.py`
+## Installation
 
-Usage
------
+1. Clone the repository:
+   ```
+   git clone https://github.com/Aatman1/world-clock-comparison.git
+   ```
+2. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+3. Run the application:
+   ```
+   python clocks.py
+   ```
 
-1. Enter a city name in the input field and click "Add Location" to add it to the list.
-2. Use the "Remove Selected Location" button to remove a city from the list.
-3. Drag-and-drop to reorder the city list.
-4. Click the "12/24 Hr" button to toggle between 12-hour and 24-hour time formats.
+## Usage
 
-Notes
------
+1. Enter a city name in the input field and click "Add Location" or press Enter to add it to the list.
+2. Right-click on a location or select it and press Delete to remove it from the list.
+3. Left-click on a location to view its weather forecast.
+4. Use the "12/24 Hr" button to toggle between 12-hour and 24-hour time formats.
 
-* The application uses the Nominatim geocoding service to determine the latitude and longitude of each city.
-* The TimezoneFinder library is used to determine the timezone of each city based on its latitude and longitude.
-* The suntime library is used to calculate the sunrise and sunset times for each city.
+## Notes
+
+- The application uses the Nominatim geocoding service to determine the latitude and longitude of each city.
+- The TimezoneFinder library is used to determine the timezone of each city based on its coordinates.
+- Weather forecast data is fetched from the OpenWeatherMap API.
+- Country shapes are displayed using geopandas and matplotlib.
+- The application has a dark mode interface for better visibility.
+
+## Troubleshooting
+
+If you encounter any issues with adding locations or fetching weather data, please check your internet connection and ensure that you have the necessary API keys (if required for the OpenWeatherMap API).
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
