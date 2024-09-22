@@ -28,16 +28,22 @@ class ForecastWindow(QWidget):
 
     def initUI(self, lat, lon):
         self.setWindowTitle("Loading forecast...")  # Set the initial window title
-        self.resize(600, 500)  # Set the window size
+        self.resize(800, 600)  # Set the window size
 
         layout = QVBoxLayout()
         self.setLayout(layout)  # Set the layout
 
         self.forecast_label = QLabel("Loading forecast...")
+        self.forecast_label.setStyleSheet("font-size: 24px; font-weight: bold;")
         layout.addWidget(self.forecast_label)  # Add the label to the layout
 
         self.forecast_text = QTextBrowser()
+        self.forecast_text.setStyleSheet("font-size: 18px;")
         layout.addWidget(self.forecast_text)  # Add the text browser to the layout
+
+        self.icon_label = QLabel()
+        self.icon_label.setStyleSheet("margin-bottom: 20px;")
+        layout.addWidget(self.icon_label)  # Add the icon label to the layout
 
         self.get_forecast(lat, lon)
 
@@ -80,7 +86,7 @@ class ForecastWindow(QWidget):
                 current_time = datetime.now(tz)
 
                 # Create a table to display the forecast data
-                table = "<table style='font-size: 16px; line-height: 1.5'>"
+                table = "<table style='font-size: 18px; line-height: 1.5'>"
                 table += "<tr><th style='padding: 10px'>Time</th><th style='padding: 10px'>Temperature °C (°F)</th><th style='padding: 10px'>Weather</th></tr>"
                 for hour in data["list"]:
                     forecast_time = datetime.fromtimestamp(hour["dt"], tz)
@@ -88,7 +94,28 @@ class ForecastWindow(QWidget):
                         temp_celsius = round(hour["main"]["temp"])
                         temp_fahrenheit = round((temp_celsius * 9/5) + 32)
                         weather_icon = self.get_weather_icon(hour["weather"][0]["icon"])
-                        table += f"<tr><td style='padding: 10px'>{forecast_time.strftime('%H:%M')}</td><td style='padding: 10px'>{temp_celsius}°C ({temp_fahrenheit}°F)</td><td style='padding: 10px'>{weather_icon} {hour['weather'][0]['description']}</td></tr>"
+
+                        # Create a horizontal layout for each row
+                        row_layout = QHBoxLayout()
+                        time_label = QLabel(f"{forecast_time.strftime('%H:%M')} ")
+                        temp_label = QLabel(f"{temp_celsius}°C ({temp_fahrenheit}°F) ")
+                        weather_icon_label = QLabel()
+                        weather_icon_pixmap = QPixmap(weather_icon)
+                        weather_icon_pixmap = weather_icon_pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio)  # Increase icon size
+                        weather_icon_label.setPixmap(weather_icon_pixmap)
+                        weather_description_label = QLabel(hour['weather'][0]['description'])
+
+                        row_layout.addWidget(time_label)
+                        row_layout.addWidget(temp_label)
+                        row_layout.addWidget(weather_icon_label)
+                        row_layout.addWidget(weather_description_label)
+
+                        # Add the horizontal layout to the table
+                        table += "<tr>"
+                        table += "<td style='padding: 10px'>" + forecast_time.strftime('%H:%M') + "</td>"
+                        table += "<td style='padding: 10px'>" + f"{temp_celsius}°C ({temp_fahrenheit}°F)" + "</td>"
+                        table += "<td style='padding: 10px'><span style='display: inline-block; vertical-align: middle;'><img src='" + weather_icon + "' width='48' height='48'></span><span style='display: inline-block; vertical-align: middle;'>" + hour['weather'][0]['description'] + "</span></td>"
+                        table += "</tr>"
                 table += "</table>"
 
                 self.forecast_text.setText(table)
@@ -96,35 +123,37 @@ class ForecastWindow(QWidget):
 
                 # Set the window title to the city and country name
                 self.setWindowTitle(f"{city_name}, {english_country_name} - Weather Forecast")
-                print(f"{city_name}, {english_country_name}")
-            else:
-                self.forecast_label.setText("Error loading forecast")
-                self.forecast_text.setText("Invalid API response")
+
+                # Set the icon
+                # weather_icon_path = self.get_weather_icon(hour["weather"][0]["icon"])
+                # icon_pixmap = QPixmap(weather_icon_path)
+                # icon_pixmap = icon_pixmap.scaled(64, 64, Qt.AspectRatioMode.KeepAspectRatio)
+                # self.icon_label.setPixmap(icon_pixmap)
         except Exception as e:
             self.forecast_label.setText("Error loading forecast")
-            self.forecast_text.setText("Error parsing API response: " + str(e))
+            self.forecast_text.setText("Failed to parse API response: " + str(e))
 
     def get_weather_icon(self, icon_code):
         # Map the icon code to a weather icon
         icon_map = {
-            "01d": "☀️",  # Sunny
-            "01n": "🌃",  # Clear night
-            "02d": "🌞",  # Partly cloudy
-            "02n": "🌃",  # Partly cloudy night
-            "03d": "☁️",  # Cloudy
-            "03n": "☁️",  # Cloudy night
-            "04d": "🌫️",  # Overcast
-            "04n": "🌫️",  # Overcast night
-            "09d": "☔️",  # Light rain
-            "09n": "☔️",  # Light rain night
-            "10d": "☁️",  # Rain
-            "10n": "☁️",  # Rain night
-            "11d": "⛈️",  # Thunderstorm
-            "11n": "⛈️",  # Thunderstorm night
-            "13d": "❄️",  # Snow
-            "13n": "❄️",  # Snow night
-            "50d": "🌫️",  # Fog
-            "50n": "🌫️",  # Fog night
+            "01d": "icons/2682848_sunny_weather_forecast_day_sun.png",  # Sunny
+            "01n": "icons/2682847_eclipse_forecast_moon_weather_night_space.png",  # Clear night
+            "02d": "icons/2682849_sun_forecast_cloud_day_weather_cloudy.png",  # Partly cloudy
+            "02n": "icons/2682846_cloud_cloudy_forecast_weather_night_moon.png",  # Partly cloudy night
+            "03d": "icons/2682850_weather_clouds_cloud_cloudy_forecast.png",  # Cloudy
+            "03n": "icons/2682846_cloud_cloudy_forecast_weather_night_moon.png",  # Cloudy night
+            "04d": "icons/2682850_weather_clouds_cloud_cloudy_forecast.png",  # Overcast
+            "04n": "icons/2682850_weather_clouds_cloud_cloudy_forecast.png",  # Overcast night
+            "09d": "icons/2682845_cloud_weather_rain_sun_cloudy_forecast.png",  # Light rain
+            "09n": "icons/2682843_weather_snow_rain_cloud_moon_night_forecast.png",  # Light rain night
+            "10d": "icons/2682835_precipitation_weather_forecast_cloudy_rainy_cloud_rain.png",  # Rain
+            "10n": "icons/2682833_weather_night_moon_precipitation_cloud_forecast_rain.png",  # Rain night
+            "11d": "icons/2682828_thunder_cloud_light bolt_storm_weather_lightning_rain.png",  # Thunderstorm
+            "11n": "icons/2682826_weather_rain_thunderstorm_light_night_bolt_moon.png",  # Thunderstorm night
+            "13d": "icons/2682816_snowing_cloudy_forecast_weather_precipitation_cloud_snow.png",  # Snow
+            "13n": "icons/2682814_snowing_snow_weather_night_precipitation_cloud_moon.png",  # Snow night
+            "50d": "icons/2682821_weather_fog_forecast_mist_foggy.png",  # Fog
+            "50n": "icons/2682801_mist_moon_cloudy_fog_weather_night_foggy.png",  # Fog night
         }
         return icon_map.get(icon_code, "❓")  # Return a default icon if the code is not found
 
