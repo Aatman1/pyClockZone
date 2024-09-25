@@ -1,4 +1,4 @@
-# ![Logo](Wclock.png) World Clock Comparison 
+# <img src="Wclock.png" alt="Logo" width="100" height="100"> World Clock Comparison 
 
 
 A graphical application to compare the current time in different cities around the world, built with Python and PyQt6.
