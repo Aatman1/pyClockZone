@@ -419,8 +419,8 @@ class WorldClockComparison(QMainWindow):
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        # Only update the UI every 5 seconds
-        if datetime.now().second % 5 == 0:
+        # Only update the UI every 15 seconds
+        if datetime.now().second % 15 == 0:
             for i, section in enumerate(self.location_sections):
                 city, _, _, _, country_code = section.location_info
                 country = pycountry.countries.get(alpha_2=country_code)
