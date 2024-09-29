@@ -28,7 +28,7 @@ class ForecastWindow(QWidget):
 
     def initUI(self, lat, lon):
         self.setWindowTitle("Loading forecast...")  # Set the initial window title
-        self.resize(1200, 600)  # Set the window size to be wider
+        self.resize(1000, 1000)  # Set the window size to be wider
 
         layout = QVBoxLayout()
         self.setLayout(layout)  # Set the layout
@@ -419,29 +419,35 @@ class WorldClockComparison(QMainWindow):
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        for i, section in enumerate(self.location_sections):
-            city, _, _, _, country_code = section.location_info
-            country = pycountry.countries.get(alpha_2=country_code)
-            if country:
-                country_name = country.name
-                if country_name == "Taiwan, Province of China":
-                    country_name = "Taiwan"
-            else:
-                country_name = ''
-            time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
-            time_str = datetime.now(pytz.timezone(section.location_info[1])).strftime(time_format)
-            info_text = f"{city} ({section.location_info[1].split('/')[0]}, {country_name})\n{time_str}"
-            if i > 0:
-                prev_city, prev_tz, _, _, country_code = self.location_sections[i-1].location_info
-                prev_time = datetime.now(pytz.timezone(prev_tz))
-                time_diff = datetime.now(pytz.timezone(section.location_info[1])) - prev_time
-                total_minutes = int(time_diff.total_seconds() / 60)
-                hours, minutes = divmod(abs(total_minutes), 60)
-                direction = "ahead of" if total_minutes > 0 else "behind"
-                diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
-                info_text += f"\nΔ {diff_str}"
-            section.info_label.setText(info_text)
-            self.update_weather(section, section.location_info[2], section.location_info[3])
+        # Only update the UI every 5 seconds
+        if datetime.now().second % 5 == 0:
+            for i, section in enumerate(self.location_sections):
+                city, _, _, _, country_code = section.location_info
+                country = pycountry.countries.get(alpha_2=country_code)
+                if country:
+                    country_name = country.name
+                    if country_name == "Taiwan, Province of China":
+                        country_name = "Taiwan"
+                else:
+                    country_name = ''
+                time_format = "%Y-%m-%d %H:%M" if self.use_24_hour else "%Y-%m-%d %I:%M %p"
+                time_str = datetime.now(pytz.timezone(section.location_info[1])).strftime(time_format)
+                info_text = f"{city} ({section.location_info[1].split('/')[0]}, {country_name})\n{time_str}"
+                if i > 0:
+                    prev_city, prev_tz, _, _, _ = self.location_sections[i-1].location_info
+                    prev_time = datetime.now(pytz.timezone(prev_tz))
+                    current_time = datetime.now(pytz.timezone(section.location_info[1]))
+                    offset1 = prev_time.utcoffset().total_seconds() / 3600
+                    offset2 = current_time.utcoffset().total_seconds() / 3600
+                    time_diff = offset2 - offset1
+                    hours, minutes = divmod(abs(time_diff), 1)
+                    hours = int(hours)
+                    minutes = int(minutes * 60)
+                    direction = "ahead of" if time_diff > 0 else "behind"
+                    diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
+                    info_text += f"\nΔ {diff_str}"
+                section.info_label.setText(info_text)
+                self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
         api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
