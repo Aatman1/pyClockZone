@@ -411,36 +411,37 @@ class WorldClockComparison(QMainWindow):
         if not self.location_sections:
             return
 
-        times = []
         for section in self.location_sections:
             city, timezone_str, lat, lon, country_code = section.location_info
             tz = pytz.timezone(timezone_str)
             current_time = datetime.now(tz)
             utc_time = current_time.astimezone(pytz.UTC)
-
-            times.append((city, current_time, timezone_str, utc_time, country_code, lat, lon))
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        times.sort(key=lambda x: x[1])
-
-        for i, (city, time, timezone_str, utc_time, country_code, lat, lon) in enumerate(times):
+        for i, section in enumerate(self.location_sections):
+            city, _, _, _, country_code = section.location_info
+            country = pycountry.countries.get(alpha_2=country_code)
+            if country:
+                country_name = country.name
+                if country_name == "Taiwan, Province of China":
+                    country_name = "Taiwan"
+            else:
+                country_name = ''
             time_format = "%Y-%m-%d %H:%M:%S" if self.use_24_hour else "%Y-%m-%d %I:%M:%S %p"
-            time_str = time.strftime(time_format)
-            info_text = f"{city} ({timezone_str})\n{time_str}"
-
+            time_str = datetime.now(pytz.timezone(section.location_info[1])).strftime(time_format)
+            info_text = f"{city} ({section.location_info[1].split('/')[0]}, {country_name})\n{time_str}"
             if i > 0:
-                prev_city, prev_time, _, _, _, _, _ = times[i-1]
-                time_diff = time.replace(tzinfo=None) - prev_time.replace(tzinfo=None)
+                prev_city, prev_tz, _, _, country_code = self.location_sections[i-1].location_info
+                prev_time = datetime.now(pytz.timezone(prev_tz))
+                time_diff = datetime.now(pytz.timezone(section.location_info[1])) - prev_time
                 total_minutes = int(time_diff.total_seconds() / 60)
                 hours, minutes = divmod(abs(total_minutes), 60)
                 direction = "ahead of" if total_minutes > 0 else "behind"
                 diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
                 info_text += f"\nΔ {diff_str}"
-
             section.info_label.setText(info_text)
-
-            self.update_weather(section, lat, lon)
+            self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
         api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
