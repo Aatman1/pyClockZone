@@ -25,6 +25,8 @@ class ForecastWindow(QWidget):
     def __init__(self, lat, lon):
         super().__init__()
         self.initUI(lat, lon)
+        icon = QIcon("Wclock.png")
+        self.setWindowIcon(icon)
 
     def initUI(self, lat, lon):
         self.setWindowTitle("Loading forecast...")  # Set the initial window title
