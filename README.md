@@ -10,12 +10,12 @@ A graphical application to compare the current time in different cities around t
 
 - Add and remove cities from the list
 - Automatically detect the timezone of each city
-- Display the current time and weather in each city, including the timezone offset from the previous city
+- Display the current time and weather condition in each city, including the timezone offset from the previous city
 - Show the time difference between cities
 - Toggle between 12-hour and 24-hour time formats
 - Graphical clock face for each city
 - Country shape display for each location
-- Flag emoji for each country
+- Flag image for each country
 - Weather forecast for each location (on left-click)
 - Remove loction from the list (on right-click)
 - Weather forcast appears in seperate window, showing forcast in 3 hour increments showing weather condition, temperature, humidity, wind speed, wind direction, and percipitation chance, percipitation amount
@@ -59,7 +59,6 @@ A graphical application to compare the current time in different cities around t
 - The application uses the Nominatim geocoding service to determine the latitude and longitude of each city.
 - The TimezoneFinder library is used to determine the timezone of each city based on its coordinates.
 - Weather forecast data is fetched from the OpenWeatherMap API.
-- Country shapes are displayed using geopandas and matplotlib.
+- Country shapes and flags are displayed using teuteuf and flagicons.
 - The application has a dark mode interface for better visibility.
-- The API for fetching forcasts does not support all locations
 
