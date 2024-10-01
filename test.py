@@ -196,8 +196,9 @@ class CountryShapeWidget(QLabel):
         if country_code != self.country_code:
             self.country_code = country_code
             country = pycountry.countries.get(alpha_2=country_code)
-            country_name = country.name.replace(' ', '-').replace(',', '')
-
+            country_name = country.name.replace(' ', '-').replace(',', '')            
+            if country_name == "Taiwan, Province of China":
+                country_name = "Taiwan"
             print(f"regular name: {country_name}")
 
             # Try to download the image using the regular country name
@@ -555,6 +556,8 @@ class WorldClockComparison(QMainWindow):
                 if section.underMouse():
                     city, _, lat, lon, country_code = section.location_info  # Get city and country code from section
                     country = pycountry.countries.get(alpha_2=country_code).name  # Get country name from country code
+                    if country== "Taiwan, Province of China":
+                        country= "Taiwan"
                     self.forecast_window = ForecastWindow(lat, lon)
                     self.forecast_window.setWindowTitle(f"{city}, {country}")  # Set window title with city and country
                     self.forecast_window.show()

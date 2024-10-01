@@ -25,6 +25,8 @@ class ForecastWindow(QWidget):
     def __init__(self, lat, lon):
         super().__init__()
         self.initUI(lat, lon)
+        icon = QIcon("Wclock.png")
+        self.setWindowIcon(icon)
 
     def initUI(self, lat, lon):
         self.setWindowTitle("Loading forecast...")  # Set the initial window title
@@ -86,7 +88,7 @@ class ForecastWindow(QWidget):
                 current_time = datetime.now(tz)
 
                 # Create a table to display the forecast data
-                table = "<table style='font-size: 18px; line-height: 1.5'>"
+                table = "<table style='font-size: 18px; line-height: 1.5; border-spacing: 10px;'>"
                 table += "<tr><th style='padding: 10px'>Time</th><th style='padding: 10px'>Temperature °C (°F)</th><th style='padding: 10px; width: 200px'>Weather</th><th style='padding: 10px'>Humidity</th><th style='padding: 10px'>Wind Speed</th><th style='padding: 10px'>Precipitation</th></tr>"
                 for hour in data["list"]:
                     forecast_time = datetime.fromtimestamp(hour["dt"], tz)
@@ -124,12 +126,12 @@ class ForecastWindow(QWidget):
                         row_layout.addWidget(precipitation_label)
 
                         table += "<tr>"
-                        table += f"<td style='padding: 10px'>{forecast_time.strftime('%H:%M')}</td>"
-                        table += f"<td style='padding: 10px'>{temp_celsius}°C ({temp_fahrenheit}°F)</td>"
-                        table += f"<td style='padding: 10px; width: 200px'><img src='{weather_icon}' width='48' height='48' style='vertical-align: middle; margin-right: 10px'>{hour['weather'][0]['description']}</td>"
-                        table += f"<td style='padding: 10px'>{hour['main']['humidity']}%</td>"
-                        table += f"<td style='padding: 10px'>{wind_speed} m/s {wind_direction_arrow}</td>"
-                        table += f"<td style='padding: 10px'>{precipitation_chance}% chance, {precipitation_amount} mm</td>"
+                        table += f"<td style='padding: 10px; width: 100px'>{forecast_time.strftime('%H:%M')}</td>"  # Time
+                        table += f"<td style='padding: 10px; width: 150px'>{temp_celsius}°C ({temp_fahrenheit}°F)</td>"  # Temperature
+                        table += f"<td style='padding: 10px; width: 200px'><img src='{weather_icon}' width='48' height='48' style='vertical-align: middle; margin-right: 10px'>{hour['weather'][0]['description']}</td>"  # Weather
+                        table += f"<td style='padding: 10px; width: 100px'>{hour['main']['humidity']}%</td>"  # Humidity
+                        table += f"<td style='padding: 10px; width: 150px'>{wind_speed} m/s {wind_direction_arrow}</td>"  # Wind Speed
+                        table += f"<td style='padding: 10px; width: 150px'>{precipitation_chance}% chance, {precipitation_amount} mm</td>"  # Precipitation
                         table += "</tr>"
                 table += "</table>"
 
@@ -155,7 +157,7 @@ class ForecastWindow(QWidget):
         elif direction >= 247.5 and direction < 292.5:
             return "←"  # West
         elif direction >= 292.5 and direction < 337.5:
-            return "↚"  # North-West
+            return "↖" # North-West
     
     def get_weather_icon(self, icon_code):
         # Map the icon code to a weather icon
@@ -194,8 +196,9 @@ class CountryShapeWidget(QLabel):
         if country_code != self.country_code:
             self.country_code = country_code
             country = pycountry.countries.get(alpha_2=country_code)
-            country_name = country.name.replace(' ', '-').replace(',', '')
-
+            country_name = country.name.replace(' ', '-').replace(',', '')            
+            if country_name == "Taiwan, Province of China":
+                country_name = "Taiwan"
             print(f"regular name: {country_name}")
 
             # Try to download the image using the regular country name
@@ -553,6 +556,8 @@ class WorldClockComparison(QMainWindow):
                 if section.underMouse():
                     city, _, lat, lon, country_code = section.location_info  # Get city and country code from section
                     country = pycountry.countries.get(alpha_2=country_code).name  # Get country name from country code
+                    if country== "Taiwan, Province of China":
+                        country= "Taiwan"
                     self.forecast_window = ForecastWindow(lat, lon)
                     self.forecast_window.setWindowTitle(f"{city}, {country}")  # Set window title with city and country
                     self.forecast_window.show()
