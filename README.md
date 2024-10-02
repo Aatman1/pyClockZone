@@ -36,7 +36,7 @@ A graphical application to compare the current time in different cities around t
 
 1. Download current version (only for windows):
    ```
-   https://github.com/Aatman1/pyClockZone/releases/tag/timezones%2Bweather
+   https://github.com/Aatman1/pyClockZone/releases
    ```
 2. extract and run clocks.exe
 
