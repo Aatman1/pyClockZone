@@ -34,6 +34,14 @@ A graphical application to compare the current time in different cities around t
 
 ## Installation
 
+1. Download current version (only for windows):
+   ```
+   https://github.com/Aatman1/pyClockZone/releases/tag/timezones%2Bweather
+   ```
+2. extract and run clocks.exe
+
+### OR
+
 1. Clone the repository:
    ```
    git clone https://github.com/Aatman1/pyClockZone.git
@@ -50,9 +58,9 @@ A graphical application to compare the current time in different cities around t
 ## Usage
 
 1. Enter a city name in the input field and click "Add Location" or press Enter to add it to the list.
-2. Right-click on a location or select it and press Delete to remove it from the list.
+2. Right-click on a location to Delete to remove it from the list.
 3. Left-click on a location to view its weather forecast.
-4. Use the "12/24 Hr" button to toggle between 12-hour and 24-hour time formats.
+4. Use the "12/24 Hr" button to toggle between 12-hour and 24-hour time formats. (up to 15s delay for action to take effect)
 
 ## Notes
 
