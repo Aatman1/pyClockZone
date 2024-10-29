@@ -513,8 +513,8 @@ class WorldClockComparison(QMainWindow):
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        # Update other UI elements every 30 seconds
-        if datetime.now().second % 30 == 0:
+        # Update other UI elements every 10 seconds
+        if datetime.now().second % 10 == 0:
             for i, section in enumerate(self.location_sections):
                 city, _, _, _, country_code = section.location_info
                 country = pycountry.countries.get(alpha_2=country_code)
@@ -547,7 +547,7 @@ class WorldClockComparison(QMainWindow):
                 self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
-        api_key = "key"  # Replace with your OpenWeatherMap API key
+        api_key = "430fcb536af73ade963483b1944d63ae"  # Replace with your OpenWeatherMap API key
         url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)

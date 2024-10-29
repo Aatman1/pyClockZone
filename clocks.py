@@ -88,7 +88,7 @@ class ForecastWindow(QWidget):
         self.get_forecast()
         
     def get_forecast(self):
-        api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
+        api_key = "430fcb536af73ade963483b1944d63ae"  # Replace with your OpenWeatherMap API key
         url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.lat}&lon={self.lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
@@ -511,7 +511,7 @@ class WorldClockComparison(QMainWindow):
                 self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
-        api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
+        api_key = "430fcb536af73ade963483b1944d63ae"  # Replace with your OpenWeatherMap API key
         url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
