@@ -4,7 +4,7 @@ import io
 import matplotlib.pyplot as plt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
                                 QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame, 
-                                QTextBrowser)
+                                QTextBrowser, QScrollArea, QSizePolicy, QMessageBox, QInputDialog)
 from PyQt6.QtCore import QTimer, Qt, QRectF, QPointF
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap, QImage, QIcon
 from datetime import datetime
@@ -22,36 +22,74 @@ except ImportError as e:
     print(f"Error importing requests: {e}")
     sys.exit(1)
 class ForecastWindow(QWidget):
-    def __init__(self, lat, lon):
+    def __init__(self, location_info):
         super().__init__()
-        self.initUI(lat, lon)
+        self.city, self.timezone_str, self.lat, self.lon, self.country_code = location_info
+        self.initUI()
         icon = QIcon("Wclock.png")
         self.setWindowIcon(icon)
 
-    def initUI(self, lat, lon):
-        self.setWindowTitle("Loading forecast...")  # Set the initial window title
-        self.resize(1000, 1000)  # Set the window size to be wider
+    def initUI(self):
+        self.setWindowTitle("Loading forecast...")
+        self.resize(1100, 1000)  # Set initial size, but allow resizing
 
-        layout = QVBoxLayout()
-        self.setLayout(layout)  # Set the layout
+        layout = QVBoxLayout(self)
+        self.setLayout(layout)
 
-        self.forecast_label = QLabel("Loading forecast...")
+        self.forecast_label = QLabel("Forecast")
         self.forecast_label.setStyleSheet("font-size: 24px; font-weight: bold;")
-        layout.addWidget(self.forecast_label)  # Add the label to the layout
+        layout.addWidget(self.forecast_label)
+
+        self.header_label = QLabel("<table style='font-size: 18px; line-height: 1.5; border-spacing: 15px;'>"
+                                   "<tr>"
+                                   "<th style='padding: 30px; width: 100px;'>Time</th>"
+                                   "<th style='padding: 30px; width: 200px;'>Temperature °C (°F)</th>"
+                                   "<th style='padding: 30px; width: 250px;'>Weather</th>"
+                                   "<th style='padding: 30px; width: 150px;'>Humidity</th>"
+                                   "<th style='padding: 30px; width: 200px;'>Wind Speed</th>"
+                                   "<th style='padding: 30px; width: 250px;'>Precipitation</th>"
+                                   "</tr></table>")
+        layout.addWidget(self.header_label)
 
         self.forecast_text = QTextBrowser()
-        self.forecast_text.setStyleSheet("font-size: 18px;")
-        layout.addWidget(self.forecast_text)  # Add the text browser to the layout
+        self.forecast_text.setStyleSheet("""
+            QTextBrowser {
+                background-color: #1a1a1a;
+                border: none;
+                font-size: 18px;
+            }
+            QScrollBar:vertical {
+                background-color: #1a1a1a;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+            }
+            QScrollBar::handle:vertical {
+                background-color: #2C2C2C;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical,
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+                background-color: #1a1a1a;
+            }
+        """)
+
+        # Use QScrollArea to contain the QTextBrowser
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setWidget(self.forecast_text)
+        scroll_area.setStyleSheet("QScrollArea { border: none; background-color: #1a1a1a; }")
+
+        # Add scroll_area to layout with stretch factor
+        layout.addWidget(scroll_area, 1)  # The '1' sets the stretch factor
 
         self.icon_label = QLabel()
         self.icon_label.setStyleSheet("margin-bottom: 20px;")
-        layout.addWidget(self.icon_label)  # Add the icon label to the layout
+        layout.addWidget(self.icon_label)
 
-        self.get_forecast(lat, lon)
-
-    def get_forecast(self, lat, lon):
-        api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
-        url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={api_key}&units=metric"
+        self.get_forecast()
+        
+    def get_forecast(self):
+        api_key = "key"  # Replace with your OpenWeatherMap API key
+        url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.lat}&lon={self.lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an exception for bad status codes
@@ -76,20 +114,19 @@ class ForecastWindow(QWidget):
             if "list" in data:
                 # Get the country name from the geopy library
                 geolocator = Nominatim(user_agent="world_clock_comparison")
-                location = geolocator.reverse((lat, lon))
+                location = geolocator.reverse((self.lat, self.lon))
                 city_name = location.raw['address'].get('city', '')
                 country_code = location.raw['address'].get('country_code', '')
                 english_country_name = pycountry.countries.get(alpha_2=country_code).name if country_code else ''
 
                 # Get the current time of the location
                 tf = TimezoneFinder()
-                timezone_str = tf.timezone_at(lng=lon, lat=lat)
+                timezone_str = tf.timezone_at(lng=self.lon, lat=self.lat)
                 tz = pytz.timezone(timezone_str)
                 current_time = datetime.now(tz)
 
                 # Create a table to display the forecast data
-                table = "<table style='font-size: 18px; line-height: 1.5; border-spacing: 10px;'>"
-                table += "<tr><th style='padding: 10px'>Time</th><th style='padding: 10px'>Temperature °C (°F)</th><th style='padding: 10px; width: 200px'>Weather</th><th style='padding: 10px'>Humidity</th><th style='padding: 10px'>Wind Speed</th><th style='padding: 10px'>Precipitation</th></tr>"
+                table = "<table style='font-size: 18px; line-height: 1.5; border-spacing: 15px;'>"
                 for hour in data["list"]:
                     forecast_time = datetime.fromtimestamp(hour["dt"], tz)
                     if forecast_time > current_time:
@@ -97,49 +134,48 @@ class ForecastWindow(QWidget):
                         temp_fahrenheit = round((temp_celsius * 9/5) + 32)
                         weather_icon = self.get_weather_icon(hour["weather"][0]["icon"])
 
-                        # Create a horizontal layout for each row
-                        row_layout = QHBoxLayout()
-                        time_label = QLabel(f"{forecast_time.strftime('%H:%M')} ")
-                        temp_label = QLabel(f"{temp_celsius}°C ({temp_fahrenheit}°F) ")
-                        weather_icon_label = QLabel()
-                        weather_icon_pixmap = QPixmap(weather_icon)
-                        weather_icon_pixmap = weather_icon_pixmap.scaled(48, 48, Qt.AspectRatioMode.KeepAspectRatio)  # Increase icon size
-                        weather_icon_label.setPixmap(weather_icon_pixmap)
-                        weather_description_label = QLabel(hour['weather'][0]['description'])
-
-                        humidity_label = QLabel(f"{hour['main']['humidity']}% ")
                         wind_speed = hour['wind']['speed']
                         wind_direction = hour['wind']['deg']
                         wind_direction_arrow = self.get_wind_direction_arrow(wind_direction)
-                        wind_speed_label = QLabel(f"{wind_speed} m/s {wind_direction_arrow} ")
 
                         precipitation_amount = hour.get('rain', {}).get('3h', 0)
-                        precipitation_chance = round(hour.get('pop', 0) * 100)  # Convert probability to percentage
-                        precipitation_label = QLabel(f"{precipitation_chance}% chance, {precipitation_amount} mm ")
-
-                        row_layout.addWidget(time_label)
-                        row_layout.addWidget(temp_label)
-                        row_layout.addWidget(weather_icon_label)
-                        row_layout.addWidget(weather_description_label)
-                        row_layout.addWidget(humidity_label)
-                        row_layout.addWidget(wind_speed_label)
-                        row_layout.addWidget(precipitation_label)
+                        precipitation_chance = round(hour.get('pop', 0) * 100)
 
                         table += "<tr>"
-                        table += f"<td style='padding: 10px; width: 100px'>{forecast_time.strftime('%H:%M')}</td>"  # Time
-                        table += f"<td style='padding: 10px; width: 150px'>{temp_celsius}°C ({temp_fahrenheit}°F)</td>"  # Temperature
-                        table += f"<td style='padding: 10px; width: 200px'><img src='{weather_icon}' width='48' height='48' style='vertical-align: middle; margin-right: 10px'>{hour['weather'][0]['description']}</td>"  # Weather
-                        table += f"<td style='padding: 10px; width: 100px'>{hour['main']['humidity']}%</td>"  # Humidity
-                        table += f"<td style='padding: 10px; width: 150px'>{wind_speed} m/s {wind_direction_arrow}</td>"  # Wind Speed
-                        table += f"<td style='padding: 10px; width: 150px'>{precipitation_chance}% chance, {precipitation_amount} mm</td>"  # Precipitation
+                        table += f"<td style='padding: 10px 30px 10px; width: 100px;'>{forecast_time.strftime('%H:%M')}</td>"
+                        table += f"<td style='padding: 10px 30px 10px; width: 200px;'>{temp_celsius}°C ({temp_fahrenheit}°F)</td>"
+                        table += f"<td style='padding: 10px 30px 10px; width: 250px;'><img src='{weather_icon}' width='48' height='48' style='vertical-align: middle; margin-right: 10px'>{hour['weather'][0]['description']. capitalize()}</td>"
+                        table += f"<td style='padding: 10px 30px 10px; width: 150px;'>{hour['main']['humidity']}%</td>"
+                        table += f"<td style='padding: 10px 30px 10px; width: 200px;'>{wind_speed} m/s {wind_direction_arrow}</td>"
+                        table += f"<td style='padding: 10px 30px 10px; width: 250px;'>{precipitation_amount} mm ({precipitation_chance}%)</td>"
                         table += "</tr>"
                 table += "</table>"
 
-                self.forecast_label.setText(f"Weather Forecast")
+                self.forecast_label.setText(f"Weather forecast")
                 self.forecast_text.setText(table)
+            else:
+                self.forecast_label.setText("Error loading forecast")
+                self.forecast_text.setText("Invalid API response. Please check the API request format.")
         except Exception as e:
             self.forecast_label.setText("Error loading forecast")
             self.forecast_text.setText("Failed to parse API response: " + str(e))
+            
+    def get_location_name(self):
+        geolocator = Nominatim(user_agent="world_clock_comparison")
+        try:
+            location = geolocator.reverse(f"{self.lat}, {self.lon}")
+            address = location.raw['address']
+            city = address.get('city', address.get('town', address.get('village', '')))
+            country = address.get('country', '')
+            if city and country:
+                return f"{city}, {country}"
+            elif country:
+                return country
+            else:
+                return f"Lat: {self.lat}, Lon: {self.lon}"
+        except Exception as e:
+            print(f"Error getting location name: {e}")
+            return f"Lat: {self.lat}, Lon: {self.lon}"
 
     def get_wind_direction_arrow(self, direction):
         if direction >= 337.5 or direction < 22.5:
@@ -273,12 +309,24 @@ class ClockWidget(QGraphicsView):
         self.location_abbr = ""
         self.country_code = ""
         self.setStyleSheet("border-radius: 10px; background-color: #2C2C2C;")
+        self.time = None
+        self.draw_static_elements()
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.update_clock)
+        self.update_timer.start(1000)  # Update every second
+
+    def update_clock(self):
+        if self.time:
+            self.time = datetime.now(self.time.tzinfo)
+            self.viewport().update()
 
     def update_time(self, time, location_abbr, country_code):
-        self.scene.clear()
+        self.time = time
         self.location_abbr = location_abbr
         self.country_code = country_code
-        
+        self.viewport().update()
+    
+    def draw_static_elements(self):
         bg_color = QColor("#2C2C2C")
         fg_color = QColor("#FFFFFF")
         
@@ -293,26 +341,34 @@ class ClockWidget(QGraphicsView):
             x2 = 70 + 60 * math.cos(math.radians(angle))
             y2 = 70 + 60 * math.sin(math.radians(angle))
             self.scene.addLine(x1, y1, x2, y2, QPen(fg_color))
-        
-        # Draw hands
-        self.draw_hand(time.hour % 12 * 30 + time.minute / 2, 40, 3, fg_color)  # Hour hand
-        self.draw_hand(time.minute * 6, 55, 2, QColor("#66B2FF"))  # Minute hand
-        self.draw_hand(time.second * 6, 60, 1, QColor("#FF6666"))  # Second hand
 
-        # Add location abbreviation and flag
-        abbr_text = self.scene.addText(f"{self.location_abbr} {self.get_flag_emoji(self.country_code)}", QFont("Arial", 18, QFont.Weight.Bold))  # Increase font size to 18
-        abbr_text.setDefaultTextColor(fg_color)
-        abbr_text.setPos(70 - abbr_text.boundingRect().width() / 2, 40)
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if self.time:
+            painter = QPainter(self.viewport())
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            
+            fg_color = QColor("#FFFFFF")
+            
+            # Draw hands
+            self.draw_hand(painter, self.time.hour % 12 * 30 + self.time.minute / 2, 40, 3, fg_color)  # Hour hand
+            self.draw_hand(painter, self.time.minute * 6, 55, 2, QColor("#66B2FF"))  # Minute hand
+            self.draw_hand(painter, self.time.second * 6, 60, 1, QColor("#FF6666"))  # Second hand
 
-    def draw_hand(self, angle, length, width, color):
-        x = 70 + length * math.sin(math.radians(angle))
-        y = 70 - length * math.cos(math.radians(angle))
-        self.scene.addLine(70, 70, x, y, QPen(color, width))
+            # Add location abbreviation and flag
+            painter.setFont(QFont("Arial", 18, QFont.Weight.Bold))
+            painter.setPen(fg_color)
+            text = f"{self.location_abbr} {self.country_code}"
+            text_rect = painter.boundingRect(self.rect(), Qt.AlignmentFlag.AlignCenter, text)
+            painter.drawText(text_rect, Qt.AlignmentFlag.AlignCenter, text)
 
-    def get_flag_emoji(self, country_code):
-        if country_code:
-            return ''.join(chr(ord(c.upper()) + 127397) for c in country_code)
-        return ''
+    def draw_hand(self, painter, angle, length, width, color):
+        painter.save()
+        painter.translate(75, 75)
+        painter.rotate(angle)
+        painter.setPen(QPen(color, width))
+        painter.drawLine(0, 0, 0, -length)
+        painter.restore()
 
 class LocationSection(QFrame):
     def __init__(self, parent=None):
@@ -371,7 +427,8 @@ class WorldClockComparison(QMainWindow):
             QListWidget::item { padding: 5px; }
             QListWidget::item:selected { background-color: #1E1E1E; }
         """)
-
+        
+        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
@@ -385,6 +442,7 @@ class WorldClockComparison(QMainWindow):
         self.format_toggle = QPushButton("12/24 Hr")
         self.format_toggle.clicked.connect(self.toggle_time_format)
         self.use_24_hour = False
+        
 
         input_layout = QHBoxLayout()
         input_layout.addWidget(self.location_input)
@@ -392,8 +450,15 @@ class WorldClockComparison(QMainWindow):
         input_layout.addWidget(self.format_toggle)
         self.layout.addLayout(input_layout)
 
-        self.clocks_layout = QVBoxLayout()
-        self.layout.addLayout(self.clocks_layout)
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True)
+        self.layout.addWidget(self.scroll_area)
+        self.scroll_area.setStyleSheet("QScrollBar:vertical { width: 0px; } QScrollBar:horizontal { height: 0px; }")
+
+        self.scroll_widget = QWidget()
+        self.scroll_area.setWidget(self.scroll_widget)
+        self.scroll_layout = QVBoxLayout(self.scroll_widget)
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
 
         self.locations = []
         self.location_sections = []
@@ -403,7 +468,33 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
+        
+        self.api_key = self.check_api_key()
+        
+    def check_api_key(self):
+        try:
+            with open('key.txt', 'r') as file:
+                api_key = file.read().strip()
+                if api_key:
+                    return api_key
+        except FileNotFoundError:
+            pass
+        
+        # If we reach here, either the file wasn't found or was empty
+        return self.request_api_key()
 
+    def request_api_key(self):
+        api_key, ok = QInputDialog.getText(self, 'OpenWeather API Key Required', 'Please enter your API key:')
+        if ok and api_key:
+            # Save the key for future use
+            with open('key.txt', 'w') as file:
+                file.write(api_key)
+            return api_key
+        else:
+            # User cancelled or didn't provide a key
+            QMessageBox.critical(self, 'Error', 'An API key is required to use this application.')
+            sys.exit()
+                
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
             self.remove_location()
@@ -414,16 +505,16 @@ class WorldClockComparison(QMainWindow):
         if not self.location_sections:
             return
 
+        # Update all sections regardless of visibility
         for section in self.location_sections:
             city, timezone_str, lat, lon, country_code = section.location_info
             tz = pytz.timezone(timezone_str)
             current_time = datetime.now(tz)
-            utc_time = current_time.astimezone(pytz.UTC)
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        # Only update the UI every 15 seconds
-        if datetime.now().second % 15 == 0:
+        # Update other UI elements every 30 seconds
+        if datetime.now().second % 30 == 0:
             for i, section in enumerate(self.location_sections):
                 city, _, _, _, country_code = section.location_info
                 country = pycountry.countries.get(alpha_2=country_code)
@@ -433,9 +524,11 @@ class WorldClockComparison(QMainWindow):
                         country_name = "Taiwan"
                 else:
                     country_name = ''
+
                 time_format = "%Y-%m-%d %H:%M" if self.use_24_hour else "%Y-%m-%d %I:%M %p"
                 time_str = datetime.now(pytz.timezone(section.location_info[1])).strftime(time_format)
                 info_text = f"{city} ({section.location_info[1].split('/')[0]}, {country_name})\n{time_str}"
+
                 if i > 0:
                     prev_city, prev_tz, _, _, _ = self.location_sections[i-1].location_info
                     prev_time = datetime.now(pytz.timezone(prev_tz))
@@ -449,11 +542,12 @@ class WorldClockComparison(QMainWindow):
                     direction = "ahead of" if time_diff > 0 else "behind"
                     diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
                     info_text += f"\nΔ {diff_str}"
+
                 section.info_label.setText(info_text)
                 self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
-        api_key = "def2979ffa5d043e73a1af06b987a29c"  # Replace with your OpenWeatherMap API key
+        api_key = "key"  # Replace with your OpenWeatherMap API key
         url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
@@ -529,7 +623,7 @@ class WorldClockComparison(QMainWindow):
                         section = LocationSection()
                         section.location_info = (city, timezone_str, location.latitude, location.longitude, country_code)
                         self.location_sections.append(section)
-                        self.clocks_layout.addWidget(section)
+                        self.scroll_layout.addWidget(section)
                         self.location_input.clear()
                     else:
                         self.show_error(f"Could not determine timezone for {city}")
@@ -538,10 +632,19 @@ class WorldClockComparison(QMainWindow):
             except Exception as e:
                 self.show_error(f"Error adding location: {str(e)}")
 
-    def remove_location(self, section):
-        self.location_sections.remove(section)
-        self.clocks_layout.removeWidget(section)
-        section.deleteLater()
+    def remove_location(self, section=None):
+        if section is None:
+            for section in self.location_sections:
+                if section.hasFocus():
+                    self.location_sections.remove(section)
+                    self.scroll_layout.removeWidget(section)
+                    section.deleteLater()
+                    self.update_times()
+                    break
+        else:
+            self.location_sections.remove(section)
+            self.scroll_layout.removeWidget(section)
+            section.deleteLater()
         self.update_times()
 
     def update_location_order(self):
@@ -554,12 +657,20 @@ class WorldClockComparison(QMainWindow):
         if event.button() == Qt.MouseButton.LeftButton:
             for section in self.location_sections:
                 if section.underMouse():
-                    city, _, lat, lon, country_code = section.location_info  # Get city and country code from section
-                    country = pycountry.countries.get(alpha_2=country_code).name  # Get country name from country code
-                    if country== "Taiwan, Province of China":
-                        country= "Taiwan"
-                    self.forecast_window = ForecastWindow(lat, lon)
-                    self.forecast_window.setWindowTitle(f"{city}, {country}")  # Set window title with city and country
+                    print("Section under mouse:", section)
+                    print("Section location_info:", section.location_info)
+                    city, timezone_str, lat, lon, country_code = section.location_info
+                    print(f"Unpacked values - City: {city}, Timezone: {timezone_str}, Lat: {lat}, Lon: {lon}, Country Code: {country_code}")
+                    country = pycountry.countries.get(alpha_2=country_code)
+                    if country:
+                        country_name = country.name
+                        if country_name == "Taiwan, Province of China":
+                            country_name = "Taiwan"
+                    else:
+                        country_name = "Unknown"
+                    print(f"Country name: {country_name}")
+                    self.forecast_window = ForecastWindow(section.location_info)  # Pass the entire tuple
+                    self.forecast_window.setWindowTitle(f"{city}, {country_name}")
                     self.forecast_window.show()
                     break
         if event.button() == Qt.MouseButton.RightButton:
