@@ -86,9 +86,26 @@ class ForecastWindow(QWidget):
         layout.addWidget(self.icon_label)
 
         self.get_forecast()
-        
+    
+    def get_api_key(self):
+        api_key = WorldClockComparison.check_api_key()
+        if not api_key:
+            # Create a dialog to request API key
+            api_key, ok = QInputDialog.getText(self, 'OpenWeather API Key Required', 'Please enter your API key:')
+            if ok and api_key:
+                # Save the key for future use
+                with open('key.txt', 'w') as file:
+                    file.write(api_key)
+                return api_key
+            return None
+        return api_key
+    
     def get_forecast(self):
-        api_key = "key"  # Replace with your OpenWeatherMap API key
+        api_key = self.get_api_key()
+        if not api_key:
+            self.forecast_label.setText("Error loading forecast")
+            self.forecast_text.setText("No API key provided")
+            return
         url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.lat}&lon={self.lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
@@ -432,6 +449,11 @@ class WorldClockComparison(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
+        
+        self.api_key_button = QPushButton("Set API Key 🔑")
+        self.api_key_button.clicked.connect(self.request_api_key) 
+        
+        self.setLayout(self.layout)  # Set the layout to your main window or widget
 
         self.location_input = QLineEdit()
         self.location_input.setPlaceholderText("Enter city name (e.g., 'London', 'New York', 'Tokyo')")
@@ -448,6 +470,7 @@ class WorldClockComparison(QMainWindow):
         input_layout.addWidget(self.location_input)
         input_layout.addWidget(self.add_button)
         input_layout.addWidget(self.format_toggle)
+        input_layout.addWidget(self.api_key_button)
         self.layout.addLayout(input_layout)
 
         self.scroll_area = QScrollArea()
@@ -468,10 +491,9 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
-        
-        self.api_key = self.check_api_key()
-        
-    def check_api_key(self):
+    
+    @staticmethod
+    def check_api_key():
         try:
             with open('key.txt', 'r') as file:
                 api_key = file.read().strip()
@@ -479,10 +501,8 @@ class WorldClockComparison(QMainWindow):
                     return api_key
         except FileNotFoundError:
             pass
-        
-        # If we reach here, either the file wasn't found or was empty
-        return self.request_api_key()
-
+        return None
+    
     def request_api_key(self):
         api_key, ok = QInputDialog.getText(self, 'OpenWeather API Key Required', 'Please enter your API key:')
         if ok and api_key:
@@ -490,11 +510,8 @@ class WorldClockComparison(QMainWindow):
             with open('key.txt', 'w') as file:
                 file.write(api_key)
             return api_key
-        else:
-            # User cancelled or didn't provide a key
-            QMessageBox.critical(self, 'Error', 'An API key is required to use this application.')
-            sys.exit()
-                
+        return None
+    
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
             self.remove_location()
@@ -547,7 +564,12 @@ class WorldClockComparison(QMainWindow):
                 self.update_weather(section, section.location_info[2], section.location_info[3])
 
     def update_weather(self, section, lat, lon):
-        api_key = "430fcb536af73ade963483b1944d63ae"  # Replace with your OpenWeatherMap API key
+        api_key = self.check_api_key()
+        if not api_key:
+            api_key = self.request_api_key()
+            if not api_key:
+                section.weather_label.setText("No API key provided")
+                return
         url = f"http://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
