@@ -4,7 +4,7 @@ import io
 import matplotlib.pyplot as plt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, 
                                 QLineEdit, QLabel, QListWidget, QGraphicsView, QGraphicsScene, QFrame, 
-                                QTextBrowser, QScrollArea)
+                                QTextBrowser, QScrollArea, QSizePolicy, QMessageBox, QInputDialog)
 from PyQt6.QtCore import QTimer, Qt, QRectF, QPointF
 from PyQt6.QtGui import QPen, QBrush, QColor, QPainter, QFont, QPixmap, QImage, QIcon
 from datetime import datetime
@@ -88,7 +88,7 @@ class ForecastWindow(QWidget):
         self.get_forecast()
         
     def get_forecast(self):
-        api_key = "430fcb536af73ade963483b1944d63ae"  # Replace with your OpenWeatherMap API key
+        api_key = "key"  # Replace with your OpenWeatherMap API key
         url = f"http://api.openweathermap.org/data/2.5/forecast?lat={self.lat}&lon={self.lon}&appid={api_key}&units=metric"
         try:
             response = requests.get(url)
@@ -311,7 +311,21 @@ class ClockWidget(QGraphicsView):
         self.setStyleSheet("border-radius: 10px; background-color: #2C2C2C;")
         self.time = None
         self.draw_static_elements()
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.update_clock)
+        self.update_timer.start(1000)  # Update every second
 
+    def update_clock(self):
+        if self.time:
+            self.time = datetime.now(self.time.tzinfo)
+            self.viewport().update()
+
+    def update_time(self, time, location_abbr, country_code):
+        self.time = time
+        self.location_abbr = location_abbr
+        self.country_code = country_code
+        self.viewport().update()
+    
     def draw_static_elements(self):
         bg_color = QColor("#2C2C2C")
         fg_color = QColor("#FFFFFF")
@@ -327,12 +341,6 @@ class ClockWidget(QGraphicsView):
             x2 = 70 + 60 * math.cos(math.radians(angle))
             y2 = 70 + 60 * math.sin(math.radians(angle))
             self.scene.addLine(x1, y1, x2, y2, QPen(fg_color))
-
-    def update_time(self, time, location_abbr, country_code):
-        self.time = time
-        self.location_abbr = location_abbr
-        self.country_code = country_code
-        self.update()
 
     def paintEvent(self, event):
         super().paintEvent(event)
@@ -420,6 +428,7 @@ class WorldClockComparison(QMainWindow):
             QListWidget::item:selected { background-color: #1E1E1E; }
         """)
         
+        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
@@ -433,6 +442,7 @@ class WorldClockComparison(QMainWindow):
         self.format_toggle = QPushButton("12/24 Hr")
         self.format_toggle.clicked.connect(self.toggle_time_format)
         self.use_24_hour = False
+        
 
         input_layout = QHBoxLayout()
         input_layout.addWidget(self.location_input)
@@ -458,7 +468,33 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
+        
+        self.api_key = self.check_api_key()
+        
+    def check_api_key(self):
+        try:
+            with open('key.txt', 'r') as file:
+                api_key = file.read().strip()
+                if api_key:
+                    return api_key
+        except FileNotFoundError:
+            pass
+        
+        # If we reach here, either the file wasn't found or was empty
+        return self.request_api_key()
 
+    def request_api_key(self):
+        api_key, ok = QInputDialog.getText(self, 'OpenWeather API Key Required', 'Please enter your API key:')
+        if ok and api_key:
+            # Save the key for future use
+            with open('key.txt', 'w') as file:
+                file.write(api_key)
+            return api_key
+        else:
+            # User cancelled or didn't provide a key
+            QMessageBox.critical(self, 'Error', 'An API key is required to use this application.')
+            sys.exit()
+                
     def keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Delete and self.location_list.hasFocus():
             self.remove_location()
@@ -469,18 +505,15 @@ class WorldClockComparison(QMainWindow):
         if not self.location_sections:
             return
 
-        # Only update visible sections
-        visible_sections = [section for section in self.location_sections if section.geometry().intersects(self.scroll_area.viewport().geometry())]
-
-        for section in visible_sections:
+        # Update all sections regardless of visibility
+        for section in self.location_sections:
             city, timezone_str, lat, lon, country_code = section.location_info
             tz = pytz.timezone(timezone_str)
             current_time = datetime.now(tz)
-            utc_time = current_time.astimezone(pytz.UTC)
             section.clock.update_time(current_time, city[:3].upper(), country_code)
             section.country_shape.update_country(country_code)
 
-        # Only update the UI every 10 seconds
+        # Update other UI elements every 10 seconds
         if datetime.now().second % 10 == 0:
             for i, section in enumerate(self.location_sections):
                 city, _, _, _, country_code = section.location_info
@@ -491,9 +524,11 @@ class WorldClockComparison(QMainWindow):
                         country_name = "Taiwan"
                 else:
                     country_name = ''
+
                 time_format = "%Y-%m-%d %H:%M" if self.use_24_hour else "%Y-%m-%d %I:%M %p"
                 time_str = datetime.now(pytz.timezone(section.location_info[1])).strftime(time_format)
                 info_text = f"{city} ({section.location_info[1].split('/')[0]}, {country_name})\n{time_str}"
+
                 if i > 0:
                     prev_city, prev_tz, _, _, _ = self.location_sections[i-1].location_info
                     prev_time = datetime.now(pytz.timezone(prev_tz))
@@ -507,6 +542,7 @@ class WorldClockComparison(QMainWindow):
                     direction = "ahead of" if time_diff > 0 else "behind"
                     diff_str = f"{hours}h {minutes}m {direction} {prev_city}"
                     info_text += f"\nΔ {diff_str}"
+
                 section.info_label.setText(info_text)
                 self.update_weather(section, section.location_info[2], section.location_info[3])
 
