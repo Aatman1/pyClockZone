@@ -452,8 +452,6 @@ class WorldClockComparison(QMainWindow):
         
         self.api_key_button = QPushButton("Set API Key 🔑")
         self.api_key_button.clicked.connect(self.request_api_key) 
-        
-        self.setLayout(self.layout)  # Set the layout to your main window or widget
 
         self.location_input = QLineEdit()
         self.location_input.setPlaceholderText("Enter city name (e.g., 'London', 'New York', 'Tokyo')")
