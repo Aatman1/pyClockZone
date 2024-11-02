@@ -4,7 +4,7 @@
 
 A graphical application to compare the current time in different cities around the world, built with Python and PyQt6.
 
-![World Clock Comparison](pyC.png)
+![World Clock Comparison](pyC.gif)
 
 ## Features
 

@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 try:
     import requests
 except ImportError as e:
-    print(f"Error importing requests: {e}")
+    # print(f"Error importing requests: {e}")
     sys.exit(1)
 class ForecastWindow(QWidget):
     def __init__(self, location_info):
@@ -252,7 +252,7 @@ class CountryShapeWidget(QLabel):
             country_name = country.name.replace(' ', '-').replace(',', '')            
             if country_name == "Taiwan, Province of China":
                 country_name = "Taiwan"
-            print(f"regular name: {country_name}")
+            # print(f"regular name: {country_name}")
 
             # Try to download the image using the regular country name
             url = f"https://teuteuf-dashboard-assets.pages.dev/data/common/country-shapes/{country_code}.svg"
@@ -388,8 +388,8 @@ class ClockWidget(QGraphicsView):
         painter.restore()
 
 class LocationSection(QFrame):
-    def __init__(self, parent=None):
-        super().__init__(parent)
+    def __init__(self):
+        super().__init__()
         self.layout = QHBoxLayout(self)  # Change to QHBoxLayout
         self.clock = ClockWidget()
         self.country_shape = CountryShapeWidget()
@@ -445,7 +445,6 @@ class WorldClockComparison(QMainWindow):
             QListWidget::item:selected { background-color: #1E1E1E; }
         """)
         
-        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.layout = QVBoxLayout(self.central_widget)
@@ -489,6 +488,8 @@ class WorldClockComparison(QMainWindow):
 
         self.geolocator = Nominatim(user_agent="world_clock_comparison")
         self.tf = TimezoneFinder()
+        
+    
     
     @staticmethod
     def check_api_key():
@@ -677,10 +678,10 @@ class WorldClockComparison(QMainWindow):
         if event.button() == Qt.MouseButton.LeftButton:
             for section in self.location_sections:
                 if section.underMouse():
-                    print("Section under mouse:", section)
-                    print("Section location_info:", section.location_info)
+                    # print("Section under mouse:", section)
+                    # print("Section location_info:", section.location_info)
                     city, timezone_str, lat, lon, country_code = section.location_info
-                    print(f"Unpacked values - City: {city}, Timezone: {timezone_str}, Lat: {lat}, Lon: {lon}, Country Code: {country_code}")
+                    # print(f"Unpacked values - City: {city}, Timezone: {timezone_str}, Lat: {lat}, Lon: {lon}, Country Code: {country_code}")
                     country = pycountry.countries.get(alpha_2=country_code)
                     if country:
                         country_name = country.name
@@ -688,7 +689,7 @@ class WorldClockComparison(QMainWindow):
                             country_name = "Taiwan"
                     else:
                         country_name = "Unknown"
-                    print(f"Country name: {country_name}")
+                    # print(f"Country name: {country_name}")
                     self.forecast_window = ForecastWindow(section.location_info)  # Pass the entire tuple
                     self.forecast_window.setWindowTitle(f"{city}, {country_name}")
                     self.forecast_window.show()
